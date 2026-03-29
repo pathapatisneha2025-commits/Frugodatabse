@@ -11,6 +11,7 @@ router.post("/create", async (req, res) => {
   }
 
   try {
+    // 1️⃣ Insert the order
     const result = await pool.query(
       `INSERT INTO frugorders 
        (user_id, items, subtotal, tax, discount, total, shipping_info, payment_method, coupon_code, status)
@@ -29,7 +30,13 @@ router.post("/create", async (req, res) => {
       ]
     );
 
-    res.json({ message: "Order placed successfully", orderId: result.rows[0].id });
+    const orderId = result.rows[0].id;
+
+    // 2️⃣ Clear the user's cart from backend (if you have a cart table)
+    await pool.query("DELETE FROM frugcart WHERE user_id = $1", [userId]);
+
+    // 3️⃣ Respond success
+    res.json({ message: "Order placed successfully", orderId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
