@@ -3,6 +3,7 @@ const cors = require("cors");
 const FrugoUsers = require("./routes/user");
 const Frugocart = require("./routes/cart");
 const Frugoorders= require("./routes/orders");
+const Frugoproducts= require("./routes/products");
 
 
 
@@ -16,6 +17,8 @@ app.use(express.json());
 app.use("/users",FrugoUsers);
 app.use("/cart",Frugocart);
 app.use("/orders",Frugoorders);
+app.use("/products",Frugoproducts);
+
 
 
 
