@@ -33,7 +33,7 @@ router.post("/create", async (req, res) => {
     const orderId = result.rows[0].id;
 
     // 2️⃣ Clear the user's cart from backend (if you have a cart table)
-    await pool.query("DELETE FROM frugcart WHERE user_id = $1", [userId]);
+    await pool.query("DELETE FROM frugocart WHERE user_id = $1", [userId]);
 
     // 3️⃣ Respond success
     res.json({ message: "Order placed successfully", orderId });
