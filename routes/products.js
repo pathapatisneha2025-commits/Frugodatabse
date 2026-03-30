@@ -3,15 +3,15 @@ const router = express.Router();
 const pool = require("../db"); // PostgreSQL pool
 const multer = require("multer");
 const { Readable } = require("stream");
-const cloudinary = require("../cloudinary"); // cloudinary config
+const cloudinary = require("../cloudinary"); // Cloudinary config
 
-/* ================================
+/* ==============================
    MULTER MEMORY STORAGE
 ================================ */
 const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB
 
-/* ================================
+/* ==============================
    CLOUDINARY UPLOAD HELPER
 ================================ */
 const uploadToCloudinary = (buffer, folder = "frugo-products") => {
@@ -28,39 +28,59 @@ const uploadToCloudinary = (buffer, folder = "frugo-products") => {
   });
 };
 
-/* ======================================================
-   ADD PRODUCT
-====================================================== */
-// ADD
-router.post("/add", async (req, res) => {
-  const { name, category, price, stock, unit, image, description, status, tag } = req.body;
+/* ==============================
+   ADD PRODUCT WITH IMAGE
+================================ */
+router.post("/add", upload.single("image"), async (req, res) => {
+  try {
+    let imageUrl = "";
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      imageUrl = result.secure_url; // Cloudinary URL
+    }
 
-  const result = await pool.query(
-    `INSERT INTO frugo_products 
-    (name, category, price, stock, unit, image, description, status, tag)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-    RETURNING *`,
-    [name, category, price, stock, unit, image, description, status, tag]
-  );
+    const { name, category, price, stock, unit, description, status, tag } = req.body;
 
-  res.json(result.rows[0]);
+    const result = await pool.query(
+      `INSERT INTO frugo_products 
+       (name, category, price, stock, unit, image, description, status, tag)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       RETURNING *`,
+      [name, category, price, stock, unit, imageUrl, description, status, tag]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
-/* ======================================================
-   UPDATE PRODUCT
-====================================================== */
+/* ==============================
+   UPDATE PRODUCT WITH IMAGE
+================================ */
+router.put("/update/:id", upload.single("image"), async (req, res) => {
+  try {
+    let imageUrl = req.body.image || ""; // default to existing URL
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      imageUrl = result.secure_url; // replace with uploaded image
+    }
 
-router.put("/update/:id", async (req, res) => {
-  const { name, category, price, stock, unit, image, description, status, tag } = req.body;
+    const { name, category, price, stock, unit, description, status, tag } = req.body;
 
-  const result = await pool.query(
-    `UPDATE frugo_products SET 
-    name=$1, category=$2, price=$3, stock=$4, unit=$5, image=$6, description=$7, status=$8, tag=$9
-    WHERE id=$10 RETURNING *`,
-    [name, category, price, stock, unit, image, description, status, tag, req.params.id]
-  );
+    const result = await pool.query(
+      `UPDATE frugo_products SET 
+         name=$1, category=$2, price=$3, stock=$4, unit=$5, image=$6, description=$7, status=$8, tag=$9
+       WHERE id=$10 RETURNING *`,
+      [name, category, price, stock, unit, imageUrl, description, status, tag, req.params.id]
+    );
 
-  res.json(result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 /* ======================================================
