@@ -31,64 +31,36 @@ const uploadToCloudinary = (buffer, folder = "frugo-products") => {
 /* ======================================================
    ADD PRODUCT
 ====================================================== */
-router.post("/add", upload.single("image"), async (req, res) => {
-  try {
-    const { name, category, price, stock, unit, description } = req.body;
+// ADD
+router.post("/add", async (req, res) => {
+  const { name, category, price, stock, unit, image, description, status, tag } = req.body;
 
-    if (!name || !category || !price) return res.status(400).json({ error: "Name, category, and price required" });
+  const result = await pool.query(
+    `INSERT INTO frugo_products 
+    (name, category, price, stock, unit, image, description, status, tag)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *`,
+    [name, category, price, stock, unit, image, description, status, tag]
+  );
 
-    // Upload image
-    let imageUrl = null;
-    if (req.file) {
-      const result = await uploadToCloudinary(req.file.buffer);
-      imageUrl = result.secure_url;
-    }
-
-    const status = stock == 0 ? "Out of Stock" : stock < 50 ? "Low Stock" : "Active";
-
-    const result = await pool.query(
-      `INSERT INTO frugo_products (name, category, price, stock, unit, image, description, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [name, category, price, stock, unit, imageUrl, description || "", status]
-    );
-
-    res.json({ product: result.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
+  res.json(result.rows[0]);
 });
 
 /* ======================================================
    UPDATE PRODUCT
 ====================================================== */
-router.put("/update/:id", upload.single("image"), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, category, price, stock, unit, description, existingImage } = req.body;
 
-    let imageUrl = existingImage || null;
-    if (req.file) {
-      const result = await uploadToCloudinary(req.file.buffer);
-      imageUrl = result.secure_url;
-    }
+router.put("/update/:id", async (req, res) => {
+  const { name, category, price, stock, unit, image, description, status, tag } = req.body;
 
-    const status = stock == 0 ? "Out of Stock" : stock < 50 ? "Low Stock" : "Active";
+  const result = await pool.query(
+    `UPDATE frugo_products SET 
+    name=$1, category=$2, price=$3, stock=$4, unit=$5, image=$6, description=$7, status=$8, tag=$9
+    WHERE id=$10 RETURNING *`,
+    [name, category, price, stock, unit, image, description, status, tag, req.params.id]
+  );
 
-    const result = await pool.query(
-      `UPDATE frugo_products
-       SET name=$1, category=$2, price=$3, stock=$4, unit=$5, image=$6, description=$7, status=$8, updated_at=CURRENT_TIMESTAMP
-       WHERE id=$9 RETURNING *`,
-      [name, category, price, stock, unit, imageUrl, description || "", status, id]
-    );
-
-    if (result.rowCount === 0) return res.status(404).json({ error: "Product not found" });
-
-    res.json({ product: result.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
+  res.json(result.rows[0]);
 });
 
 /* ======================================================
